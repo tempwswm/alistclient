@@ -179,3 +179,37 @@ class StorageInfo(Info):
 
     def __str__(self):
         return f"{self.__class__}[driver:{self.driver},mount_path:{self.mount_path},modified:{self.modified}]"
+
+
+class MetaInfo(Info):
+    _default = {
+        "id": 1,
+        "path": "/a",
+        "password": "i",
+        "p_sub": False,
+        "write": False,
+        "w_sub": False,
+        "hide": "",
+        "h_sub": False,
+        "readme": "",
+        "r_sub": False
+    }
+
+    def __init__(self, info_json):
+        super().__init__()
+        # 这里是为了自动补全加的，不然很不好用
+        self.id = None
+        self.path = None
+        self.password = None
+        self.p_sub = None
+        self.write = None
+        self.w_sub = None
+        self.hide = None
+        self.h_sub = None
+        self.readme = None
+        self.r_sub = None
+
+        self.trans(info_json)
+
+    def __str__(self):
+        return f"{self.__class__}[path:{self.path},password:{self.password}]"

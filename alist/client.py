@@ -3,6 +3,8 @@ import warnings
 
 import requests
 
+from alist.apirouter import APIRouter
+from alist.connection import Connection
 from alist.info import FileInfo, UserInfo, StorageInfo, SettingInfo, WebdavPolicy, ExtractFolder, Driver
 
 
@@ -10,10 +12,11 @@ class Client:
 
     def __init__(self, domain, username, password):
         self.domain = domain
-        self.session = requests.Session()
+        self.connection = Connection(domain)
         self.token = None
         self.username = username
         self.password = password
+        self.api = APIRouter(None, self.connection)
 
         # self.login()
 
@@ -23,59 +26,22 @@ class Client:
         # TODO ???????
 
     def request(self, method="POST", url="", params=None, data=None):
-        headers = {
-            'Authorization': self.token,
-            'Content-Type': 'application/json'
-        }
-        rsp = self.session.request(method=method, url=self.domain + url, headers=headers, params=params, data=data)
-        if rsp.status_code != 200:
-            raise Exception("not 200, check")
-        rsp_json = rsp.json()
-        if rsp_json["code"] != 200:
-            warnings.warn(rsp_json["message"])
-        return rsp
+        return self.connection.request(method, url, params, data)
 
     def login(self):
-
-        payload = {"username": self.username,
-                   "password": self.password,
-                   "otp_code": ""}
-        rsp = self.request("post", "/api/auth/login", data=json.dumps(payload))
-        self.token = rsp.json()["data"]["token"]
+        return self.api.auth.login(self.username, self.password)
 
     def list(self, path: str, password="", page=1, per_page=30, refresh=False):
-        payload = {
-            "page": page,
-            "password": password,
-            "path": path,
-            "per_page": per_page,
-            "refresh": refresh
-        }
-        rsp = self.request("POST", "/api/fs/list", data=json.dumps(payload))
-        ret = []
-        for info in rsp.json()["data"]["content"]:
-            ret.append(FileInfo(info))
-        return ret
+        return self.api.fs.list(path, password, page, per_page, refresh)
 
     def mkdir(self, path: str):
-        payload = {
-            "path": path
-        }
-        self.request("POST", "/api/fs/mkdir", data=json.dumps(payload))
+        return self.api.fs.mkdir(path)
 
     def rename(self, name: str, path: str):
-        payload = {
-            "name": name,
-            "path": path
-        }
-        self.request("POST", "/api/fs/rename", data=json.dumps(payload))
+        return self.api.fs.rename(name, path)
 
     def remove(self, from_dir: str, names: [str]):
-        payload = {
-            "dir": from_dir,
-            "names": names
-        }
-        self.request("POST", "/api/fs/remove", data=json.dumps(payload))
+        return self.api.fs.remove(from_dir, names)
 
     def upload(self):
         # TODO
@@ -84,12 +50,7 @@ class Client:
         pass
 
     def get(self, path: str, password: str = ""):
-        payload = {
-            "path": path,
-            "password": password
-        }
-        rsp = self.request("POST", "/api/fs/get", data=json.dumps(payload))
-        return FileInfo(rsp.json()["data"])
+        return self.api.fs.get(path, password)
 
     def put(self):
         # TODO
@@ -98,22 +59,10 @@ class Client:
         pass
 
     def list_setting(self, group=0):
-        payload = {
-            "group": group
-        }
-        rsp = self.request("GET", "/api/admin/setting/list", params=payload)
-        ret = []
-        for i in rsp.json()["data"]:
-            ret.append(SettingInfo(i))
-        return ret
+        return self.api.admin.setting.list(group)
 
     def list_user(self):
-
-        rsp = self.request("GET", "/api/admin/user/list")
-        ret = []
-        for i in rsp.json()["data"]["content"]:
-            ret.append(UserInfo(i))
-        return ret
+        return self.api.admin.user.list()
 
     def list_storage(self):
         rsp = self.request("GET", "/api/admin/storage/list")
@@ -140,41 +89,20 @@ class Client:
                        down_proxy_url: str = "", extract_folder: ExtractFolder = ExtractFolder.Front,
                        addition=None):
         """不一定能用"""
-        #
-        if addition is None:
-            addition = {}
-        payload = {
-            "mount_path": mount_path,
-            "order": order,
-            "remark": remark,
-            "cache_expiration": cache_expiration,
-            "web_proxy": web_proxy,
-            "webdav_policy": webdav_policy,
-            "down_proxy_url": down_proxy_url,
-            "extract_folder": extract_folder,
-            "driver": driver,
-            "addition": addition
-        }
-        self.request("POST", "/api/admin/storage/create", data=json.dumps(payload))
+        return self.api.admin.storage.create(mount_path, order, driver,
+                                             remark, cache_expiration,
+                                             web_proxy, webdav_policy,
+                                             down_proxy_url, extract_folder,
+                                             addition)
 
     def get_storage(self, storage_id):
-        payload = {
-            "id": storage_id
-        }
-        rsp = self.request("GET", "/api/admin/storage/get", params=payload)
-        return StorageInfo(rsp.json()["data"])
+        return self.api.admin.storage.get(storage_id)
 
     def delete_storage(self, storage_id):
-        payload = {
-            "id": storage_id
-        }
-        self.request("GET", "/api/admin/storage/delete", params=payload)
+        return self.api.admin.storage.delete(storage_id)
 
     def list_driver(self):
-        """不要用，看看就好了"""
-        rsp = self.request("GET", "/api/admin/driver/list")
-        warnings.warn("打印出来你自己看吧")
-        print(rsp.json())
+        return self.api.admin.driver.list()
 
 
 class WebHookClient(Client):
@@ -182,6 +110,7 @@ class WebHookClient(Client):
     这是一个处理webhook的客户端
     与https://github.com/alist-org/alist/issues/5032要求的一致，先放这里，以后实现
     """
+
     def __init__(self, domain, webhook_url):
         super().__init__(domain)
         self._register_webhook(webhook_url)
