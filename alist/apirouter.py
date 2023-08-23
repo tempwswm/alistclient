@@ -1,10 +1,11 @@
+import abc
 import inspect
 import json
 import sys
 import warnings
 
 from alist.connection import Connection
-from alist.info import FileInfo, SettingInfo, UserInfo, StorageInfo, Driver, WebdavPolicy, ExtractFolder
+from alist.info import FileInfo, SettingInfo, UserInfo, StorageInfo, Driver, WebdavPolicy, ExtractFolder, TaskInfo, Info
 
 
 class Router:
@@ -87,10 +88,8 @@ class FsRouter(Router):
         }
         rsp = self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}",
                                        data=json.dumps(payload))
-        ret = []
-        for info in rsp.json()["data"]["content"]:
-            ret.append(FileInfo(info))
-        return ret
+
+        return Info.retInfo(FileInfo, rsp.json()["data"]["content"])
 
     def search(self):
         # TODO
@@ -228,10 +227,7 @@ class UserRouter(Router):
 
     def list(self):
         rsp = self._connection.request("GET", f"{self._api_path}/{inspect.stack()[0].function}")
-        ret = []
-        for i in rsp.json()["data"]["content"]:
-            ret.append(UserInfo(i))
-        return ret
+        return Info.retInfo(UserInfo, rsp.json()["data"]["content"])
 
     def get(self):
         # TODO
@@ -261,10 +257,7 @@ class StorageRouter(Router):
 
     def list(self):
         rsp = self._connection.request("GET", f"{self._api_path}/{inspect.stack()[0].function}")
-        ret = []
-        for i in rsp.json()["data"]["content"]:
-            ret.append(StorageInfo(i))
-        return ret
+        return Info.retInfo(StorageInfo, rsp.json()["data"]["content"])
 
     def get(self, storage_id):
         payload = {
@@ -354,10 +347,7 @@ class SettingRouter(Router):
         }
         rsp = self._connection.request("GET", f"{self._api_path}/{inspect.stack()[0].function}",
                                        params=payload)
-        ret = []
-        for i in rsp.json()["data"]:
-            ret.append(SettingInfo(i))
-        return ret
+        return Info.retInfo(SettingInfo, rsp.json()["data"]["content"])
 
     def save(self):
         # TODO
@@ -382,12 +372,19 @@ class SettingRouter(Router):
 
 class TaskRouter(Router):
     """
-    这里不确定是怎么组织的
+    任务
     """
 
     def __init__(self, father, connection):
         super().__init__(father, connection)
         self._api_path += "/task"
+
+        self.upload = TaskUploadRouter(self, self._connection)
+        self.copy = TaskCopyRouter(self, self._connection)
+        self.aria2_down = TaskAria2DownRouter(self, self._connection)
+        self.aria2_transfer = TaskAria2TransferRouter(self, self._connection)
+        self.qbit_down = TaskQbitDownRouter(self, self._connection)
+        self.qbit_transfer = TaskQbitTransferRouter(self, self._connection)
 
 
 class MessageRouter(Router):
@@ -428,3 +425,75 @@ class IndexRouter(Router):
     def progress(self):
         # TODO
         self._connection.request("GET", f"{self._api_path}/{inspect.stack()[0].function}")
+
+
+class _TaskBaseRouter(Router):
+    """
+    是task类型api的接口定义类
+    """
+
+    @abc.abstractmethod
+    def __init__(self, father, connection):
+        super().__init__(father, connection)
+
+    def done(self):
+        rsp = self._connection.request("GET", f"{self._api_path}/{inspect.stack()[0].function}")
+        return Info.retInfo(TaskInfo, rsp.json()["data"]["content"])
+
+    def undone(self):
+        rsp = self._connection.request("GET", f"{self._api_path}/{inspect.stack()[0].function}")
+        return Info.retInfo(TaskInfo, rsp.json()["data"]["content"])
+
+    def delete(self, tid):
+        payload = {"tid": tid}
+        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}", params=payload)
+
+    def cancel(self, tid):
+        payload = {"tid": tid}
+        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}", params=payload)
+
+    def clear_done(self):
+        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+
+    def clear_succeeded(self):
+        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+
+    def retry(self, tid):
+        payload = {"tid": tid}
+        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}", params=payload)
+
+
+class TaskUploadRouter(_TaskBaseRouter):
+    def __init__(self, father, connection):
+        super().__init__(father, connection)
+        self._api_path += "/upload"
+
+
+class TaskCopyRouter(_TaskBaseRouter):
+    def __init__(self, father, connection):
+        super().__init__(father, connection)
+        self._api_path += "/copy"
+
+
+class TaskAria2DownRouter(_TaskBaseRouter):
+    def __init__(self, father, connection):
+        super().__init__(father, connection)
+        self._api_path += "/aria2_down"
+
+
+class TaskAria2TransferRouter(_TaskBaseRouter):
+    def __init__(self, father, connection):
+        super().__init__(father, connection)
+        self._api_path += "/aria2_transfer"
+
+
+class TaskQbitDownRouter(_TaskBaseRouter):
+    def __init__(self, father, connection):
+        super().__init__(father, connection)
+        self._api_path += "/qbit_down"
+
+
+class TaskQbitTransferRouter(_TaskBaseRouter):
+    def __init__(self, father, connection):
+        super().__init__(father, connection)
+        self._api_path += "/qbit_down"

@@ -23,7 +23,7 @@ class Client:
     @property
     def hash_password(self):
         return None
-        # TODO ???????
+        # TODO 给hash_login用的混淆后的密码，没看懂怎么实现的
 
     def request(self, method="POST", url="", params=None, data=None):
         return self.connection.request(method, url, params, data)

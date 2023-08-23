@@ -25,8 +25,16 @@ class Driver(StrEnum):
     Aliyundrive = "Aliyundrive"
 
 
-def _get_value(json_dict, key, default=None):
-    return json_dict[key] if key in json_dict else default
+def _get_value(json_dict: dict, key, default=None):
+    if key == "modified":
+        modified_str = json_dict.get(key, "1970-01-01T00:00:00:000Z")
+        # go time is diff
+        v = dateutil.parser.parser().parse(modified_str)
+    elif key == "addition":
+        v = json.loads(json_dict.get(key, "{}"))
+    else:
+        v = json_dict.get(key, None)
+    return v
 
 
 class Info:
@@ -35,15 +43,21 @@ class Info:
     def __init__(self):
         pass
 
-    def trans(self, info_json):
+    @classmethod
+    def creatInfo(cls, info_cls: type, info_json):
+        return info_cls(info_json)
+
+    @classmethod
+    def retInfo(cls, info_cls: type, info_json):
+        if isinstance(info_json, dict):
+            return info_cls(info_json)
+        if isinstance(info_json, list):
+            return [info_cls(i) for i in info_json]
+
+    def trans(self, info_json: dict):
         for k in self._default:
-            v = _get_value(info_json, k)
-            if k == "modified":
-                modified_str = _get_value(info_json, "modified", "1970-01-01T00:00:00:000Z")
-                # go time is diff
-                v = dateutil.parser.parser().parse(modified_str)
-            if k == "addition":
-                v = json.loads(_get_value(info_json, k))
+            v = info_json.get(k, None)
+
             self.__setattr__(k, v)
 
 
@@ -213,3 +227,29 @@ class MetaInfo(Info):
 
     def __str__(self):
         return f"{self.__class__}[path:{self.path},password:{self.password}]"
+
+
+class TaskInfo(Info):
+    _default = {
+        "id": "1",
+        "name": "upload 1.png to [/s](/test)",
+        "state": "succeeded",
+        "status": "",
+        "progress": 100,
+        "error": ""
+    }
+
+    def __init__(self, info_json):
+        super().__init__()
+        # 这里是为了自动补全加的，不然很不好用
+        self.id = None
+        self.name = None
+        self.state = None
+        self.status = None
+        self.progress = None
+        self.error = None
+
+        self.trans(info_json)
+
+    def __str__(self):
+        return f"{self.__class__}[path:{self.name},password:{self.state}]"
