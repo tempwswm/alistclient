@@ -1,4 +1,3 @@
-import inspect
 import warnings
 
 import requests
@@ -11,9 +10,6 @@ class Connection:
         self.token = ""
 
     def request(self, method="POST", url="", params=None, data=None):
-
-        # caller = inspect.stack()
-        # url = f"{caller[1].frame.f_locals['self']._api_path}/{caller[1].function}"
         headers = {
             'Authorization': self.token,
             'Content-Type': 'application/json'

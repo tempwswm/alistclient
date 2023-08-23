@@ -33,7 +33,7 @@ def _get_value(json_dict: dict, key, default=None):
     elif key == "addition":
         v = json.loads(json_dict.get(key, "{}"))
     else:
-        v = json_dict.get(key, None)
+        v = json_dict.get(key, default)
     return v
 
 

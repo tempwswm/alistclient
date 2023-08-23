@@ -1,7 +1,6 @@
 import abc
 import inspect
 import json
-import sys
 import warnings
 
 from alist.connection import Connection
@@ -10,14 +9,18 @@ from alist.info import FileInfo, SettingInfo, UserInfo, StorageInfo, Driver, Web
 
 class Router:
 
-    def __init__(self, father: "Router", connection: Connection):
+    def __init__(self, father, connection: Connection):
         self._father = father
+        """上一级的路由对象"""
+        # 这里将使用保护属性的原因是不希望在实际使用的时候被代码补全提示
+        # noinspection PyProtectedMember
         self._api_path = "" if self._father is None else self._father._api_path
         self._connection = connection
 
 
 class APIRouter(Router):
-    def __init__(self, father, connection):
+    def __init__(self, father: Router | None, connection: Connection):
+        """设计上最外层的路由"""
         super().__init__(father, connection)
         self._api_path += "/api"
 
@@ -31,7 +34,9 @@ class APIRouter(Router):
 
 
 class AdminRouter(Router):
-    def __init__(self, father, connection):
+    """你不应该自己实例化这个类\n"""
+
+    def __init__(self, father: Router, connection: Connection):
         super().__init__(father, connection)
         self._api_path += "/admin"
 
@@ -46,35 +51,38 @@ class AdminRouter(Router):
 
 
 class AuthRouter(Router):
-    """这里有一些url和函数名不能对应了。。。。。"""
+    """你不应该自己实例化这个类\n
+    这里有一些url和函数名不能对应了。。。。。"""
 
-    def __init__(self, father, connection):
+    def __init__(self, father: Router, connection: Connection):
         super().__init__(father, connection)
         self._api_path += "/auth"
 
     def login(self, username, password, otp_code=""):
         payload = {"username": username,
                    "password": password,
-                   "otp_code": ""}
-        rsp = self._connection.request("post", f"{self._api_path}/{inspect.stack()[0].function}",
-                                       data=json.dumps(payload))
+                   "otp_code": otp_code}
+        rsp = self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}",
+                                    data=json.dumps(payload))
         self._connection.set_token(rsp.json()["data"]["token"])
 
     def login_hash(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/login/hash")
+        self._connection.post(f"{self._api_path}/login/hash")
 
     def generate_2fa(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/2fa/generate")
+        self._connection.post(f"{self._api_path}/2fa/generate")
 
     def verify_2fa(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/2fa/verify")
+        self._connection.post(f"{self._api_path}/2fa/verify")
 
 
 class FsRouter(Router):
-    def __init__(self, father, connection):
+    """你不应该自己实例化这个类\n"""
+
+    def __init__(self, father: Router, connection: Connection):
         super().__init__(father, connection)
         self._api_path += "/fs"
 
@@ -86,78 +94,78 @@ class FsRouter(Router):
             "per_page": per_page,
             "refresh": refresh
         }
-        rsp = self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}",
-                                       data=json.dumps(payload))
+        rsp = self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}",
+                                    data=json.dumps(payload))
 
         return Info.retInfo(FileInfo, rsp.json()["data"]["content"])
 
     def search(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def get(self, path: str, password: str = ""):
         payload = {
             "path": path,
             "password": password
         }
-        rsp = self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}",
-                                       data=json.dumps(payload))
+        rsp = self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}",
+                                    data=json.dumps(payload))
         return FileInfo(rsp.json()["data"])
 
     def other(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def dirs(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def mkdir(self, path: str):
         payload = {
             "path": path
         }
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}",
-                                 data=json.dumps(payload))
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}",
+                              data=json.dumps(payload))
 
     def rename(self, name: str, path: str):
         payload = {
             "name": name,
             "path": path
         }
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}",
-                                 data=json.dumps(payload))
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}",
+                              data=json.dumps(payload))
 
     def batch_rename(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def regex_rename(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def move(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def recursive_move(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def copy(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def remove(self, from_dir: str, names: [str]):
         payload = {
             "dir": from_dir,
             "names": names
         }
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}",
-                                 data=json.dumps(payload))
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}",
+                              data=json.dumps(payload))
 
     def remove_empty_directory(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def put(self):
         # TODO
@@ -169,101 +177,107 @@ class FsRouter(Router):
 
     def link(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
-    def add_arai2(self):
+    def add_aria2(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def add_qbit(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
 
 class PublicRouter(Router):
-    def __init__(self, father, connection):
+    """你不应该自己实例化这个类\n"""
+
+    def __init__(self, father: Router, connection: Connection):
         super().__init__(father, connection)
         self._api_path += "/public"
 
     def ping(self):
         # TODO
-        self._connection.request("GET", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.get(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def setting(self):
         # TODO
-        self._connection.request("GET", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.get(f"{self._api_path}/{inspect.stack()[0].function}")
 
 
 class MetaRouter(Router):
-    def __init__(self, father, connection):
+    """你不应该自己实例化这个类\n"""
+
+    def __init__(self, father: Router, connection: Connection):
         super().__init__(father, connection)
         self._api_path += "/meta"
 
     def list(self):
         # TODO
-        self._connection.request("GET", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.get(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def get(self):
         # TODO
-        self._connection.request("GET", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.get(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def create(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def update(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def delete(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
 
 class UserRouter(Router):
-    def __init__(self, father, connection):
+    """你不应该自己实例化这个类\n"""
+
+    def __init__(self, father: Router, connection: Connection):
         super().__init__(father, connection)
         self._api_path += "/user"
 
     def list(self):
-        rsp = self._connection.request("GET", f"{self._api_path}/{inspect.stack()[0].function}")
+        rsp = self._connection.get(f"{self._api_path}/{inspect.stack()[0].function}")
         return Info.retInfo(UserInfo, rsp.json()["data"]["content"])
 
     def get(self):
         # TODO
-        self._connection.request("GET", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.get(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def create(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def update(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def cancel_2fa(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def del_cache(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
 
 class StorageRouter(Router):
-    def __init__(self, father, connection):
+    """你不应该自己实例化这个类\n"""
+
+    def __init__(self, father: Router, connection: Connection):
         super().__init__(father, connection)
         self._api_path += "/storage"
 
     def list(self):
-        rsp = self._connection.request("GET", f"{self._api_path}/{inspect.stack()[0].function}")
+        rsp = self._connection.get(f"{self._api_path}/{inspect.stack()[0].function}")
         return Info.retInfo(StorageInfo, rsp.json()["data"]["content"])
 
     def get(self, storage_id):
-        payload = {
-            "id": storage_id
-        }
-        rsp = self._connection.request("GET", f"{self._api_path}/{inspect.stack()[0].function}", params=payload)
+        query = {"id": storage_id}
+        rsp = self._connection.get(f"{self._api_path}/{inspect.stack()[0].function}", params=query)
         return StorageInfo(rsp.json()["data"])
 
     def create(self, mount_path, order: int, driver: Driver,
@@ -287,95 +301,97 @@ class StorageRouter(Router):
             "driver": driver,
             "addition": addition
         }
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}", data=json.dumps(payload))
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}", data=json.dumps(payload))
 
     def update(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def delete(self, storage_id):
-        payload = {
+        query = {
             "id": storage_id
         }
-        self._connection.request("GET", f"{self._api_path}/{inspect.stack()[0].function}", params=payload)
+        self._connection.get(f"{self._api_path}/{inspect.stack()[0].function}", params=query)
 
-    def enable(self):
-        # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+    def enable(self, storage_id):
+        query = {"id": storage_id}
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}", params=query)
 
-    def disable(self):
-        # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+    def disable(self,storage_id):
+        query = {"id": storage_id}
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}", params=query)
 
     def load_all(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
 
 class DriverRouter(Router):
-    def __init__(self, father, connection):
+    """你不应该自己实例化这个类\n"""
+
+    def __init__(self, father: Router, connection: Connection):
         super().__init__(father, connection)
         self._api_path += "/driver"
 
     def list(self):
         """不要用，看看就好了"""
-        rsp = self._connection.request("GET", f"{self._api_path}/{inspect.stack()[0].function}")
+        rsp = self._connection.get(f"{self._api_path}/{inspect.stack()[0].function}")
         warnings.warn("打印出来你自己看吧")
         print(rsp.json())
 
     def names(self):
         # TODO
-        self._connection.request("GET", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.get(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def info(self):
         # TODO
-        self._connection.request("GET", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.get(f"{self._api_path}/{inspect.stack()[0].function}")
 
 
 class SettingRouter(Router):
-    def __init__(self, father, connection):
+    """你不应该自己实例化这个类\n"""
+
+    def __init__(self, father: Router, connection: Connection):
         super().__init__(father, connection)
         self._api_path += "/setting"
 
     def get(self):
         # TODO
-        self._connection.request("GET", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.get(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def list(self, group=0):
-        payload = {
-            "group": group
-        }
-        rsp = self._connection.request("GET", f"{self._api_path}/{inspect.stack()[0].function}",
-                                       params=payload)
+        query = {"group": group}
+        rsp = self._connection.get(f"{self._api_path}/{inspect.stack()[0].function}", params=query)
         return Info.retInfo(SettingInfo, rsp.json()["data"]["content"])
 
     def save(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def delete(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def reset_token(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def set_aria2(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def set_qbit(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
 
 class TaskRouter(Router):
     """
-    任务
+    你不应该自己实例化这个类\n
+    任务路由
     """
 
-    def __init__(self, father, connection):
+    def __init__(self, father: Router, connection: Connection):
         super().__init__(father, connection)
         self._api_path += "/task"
 
@@ -388,112 +404,129 @@ class TaskRouter(Router):
 
 
 class MessageRouter(Router):
-    def __init__(self, father, connection):
+    """你不应该自己实例化这个类\n"""
+
+    def __init__(self, father: Router, connection: Connection):
         super().__init__(father, connection)
         self._api_path += "/message"
 
     def get(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def send(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
 
 class IndexRouter(Router):
-    def __init__(self, father, connection):
+    """你不应该自己实例化这个类\n"""
+
+    def __init__(self, father: Router, connection: Connection):
         super().__init__(father, connection)
         self._api_path += "/index"
 
     def build(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def update(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def stop(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def clear(self):
         # TODO
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def progress(self):
         # TODO
-        self._connection.request("GET", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.get(f"{self._api_path}/{inspect.stack()[0].function}")
 
 
 class _TaskBaseRouter(Router):
     """
+    你不应该自己实例化这个类\n
     是task类型api的接口定义类
     """
 
     @abc.abstractmethod
-    def __init__(self, father, connection):
+    def __init__(self, father: Router, connection: Connection):
         super().__init__(father, connection)
 
     def done(self):
-        rsp = self._connection.request("GET", f"{self._api_path}/{inspect.stack()[0].function}")
+        rsp = self._connection.get(f"{self._api_path}/{inspect.stack()[0].function}")
         return Info.retInfo(TaskInfo, rsp.json()["data"]["content"])
 
     def undone(self):
-        rsp = self._connection.request("GET", f"{self._api_path}/{inspect.stack()[0].function}")
+        rsp = self._connection.get(f"{self._api_path}/{inspect.stack()[0].function}")
         return Info.retInfo(TaskInfo, rsp.json()["data"]["content"])
 
     def delete(self, tid):
-        payload = {"tid": tid}
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}", params=payload)
+        query = {"tid": tid}
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}", params=query)
 
     def cancel(self, tid):
-        payload = {"tid": tid}
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}", params=payload)
+        query = {"tid": tid}
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}", params=query)
 
     def clear_done(self):
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def clear_succeeded(self):
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}")
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}")
 
     def retry(self, tid):
-        payload = {"tid": tid}
-        self._connection.request("POST", f"{self._api_path}/{inspect.stack()[0].function}", params=payload)
+        query = {"tid": tid}
+        self._connection.post(f"{self._api_path}/{inspect.stack()[0].function}", params=query)
 
 
 class TaskUploadRouter(_TaskBaseRouter):
-    def __init__(self, father, connection):
+    """你不应该自己实例化这个类\n"""
+
+    def __init__(self, father: Router, connection: Connection):
         super().__init__(father, connection)
         self._api_path += "/upload"
 
 
 class TaskCopyRouter(_TaskBaseRouter):
-    def __init__(self, father, connection):
+    """你不应该自己实例化这个类\n"""
+
+    def __init__(self, father: Router, connection: Connection):
         super().__init__(father, connection)
         self._api_path += "/copy"
 
 
 class TaskAria2DownRouter(_TaskBaseRouter):
-    def __init__(self, father, connection):
+    """你不应该自己实例化这个类\n"""
+
+    def __init__(self, father: Router, connection: Connection):
         super().__init__(father, connection)
         self._api_path += "/aria2_down"
 
 
 class TaskAria2TransferRouter(_TaskBaseRouter):
-    def __init__(self, father, connection):
+    """你不应该自己实例化这个类\n"""
+
+    def __init__(self, father: Router, connection: Connection):
         super().__init__(father, connection)
         self._api_path += "/aria2_transfer"
 
 
 class TaskQbitDownRouter(_TaskBaseRouter):
-    def __init__(self, father, connection):
+    """你不应该自己实例化这个类\n"""
+
+    def __init__(self, father: Router, connection: Connection):
         super().__init__(father, connection)
         self._api_path += "/qbit_down"
 
 
 class TaskQbitTransferRouter(_TaskBaseRouter):
-    def __init__(self, father, connection):
+    """你不应该自己实例化这个类\n"""
+
+    def __init__(self, father: Router, connection: Connection):
         super().__init__(father, connection)
         self._api_path += "/qbit_down"

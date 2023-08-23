@@ -1,11 +1,6 @@
-import json
-import warnings
-
-import requests
-
 from alist.apirouter import APIRouter
 from alist.connection import Connection
-from alist.info import FileInfo, UserInfo, StorageInfo, SettingInfo, WebdavPolicy, ExtractFolder, Driver
+from alist.info import StorageInfo, WebdavPolicy, ExtractFolder, Driver
 
 
 class Client:
@@ -26,6 +21,7 @@ class Client:
         # TODO 给hash_login用的混淆后的密码，没看懂怎么实现的
 
     def request(self, method="POST", url="", params=None, data=None):
+        """你可以用它来自己实现一些这个库没有的东西"""
         return self.connection.request(method, url, params, data)
 
     def login(self):
@@ -43,20 +39,19 @@ class Client:
     def remove(self, from_dir: str, names: [str]):
         return self.api.fs.remove(from_dir, names)
 
-    def upload(self):
-        # TODO
-        # /api/fs/form
-        # 我没找到怎么实现的，如果你能提供curl命令，我会补全
-        pass
+    def upload(self, file, remote_path):
+        raise Exception("这里还没实现")
+        # return self.api.fs.put()
+
+    def upload_files(self, files: list, remote_path):
+        raise Exception("这里还没实现")
+        # return self.api.fs.form()
 
     def get(self, path: str, password: str = ""):
         return self.api.fs.get(path, password)
 
     def put(self):
-        # TODO
-        # /api/fs/put
-        # 我没找到怎么实现的，如果你能提供curl命令，我会补全
-        pass
+        return self.upload(None, None)
 
     def list_setting(self, group=0):
         return self.api.admin.setting.list(group)
@@ -65,23 +60,13 @@ class Client:
         return self.api.admin.user.list()
 
     def list_storage(self):
-        rsp = self.request("GET", "/api/admin/storage/list")
-        ret = []
-        for i in rsp.json()["data"]["content"]:
-            ret.append(StorageInfo(i))
-        return ret
+        return self.api.admin.storage.list()
 
     def enable_storage(self, storage_id):
-        payload = {
-            "id": storage_id
-        }
-        self.request("POST", "/api/admin/storage/enable", params=payload)
+        return self.api.admin.storage.enable(storage_id)
 
     def disable_storage(self, storage_id):
-        payload = {
-            "id": storage_id
-        }
-        self.request("POST", "/api/admin/storage/disable", params=payload)
+        return self.api.admin.storage.disable(storage_id)
 
     def create_storage(self, mount_path, order: int, driver: Driver,
                        remark: str = None, cache_expiration: int = 30,
@@ -111,8 +96,8 @@ class WebHookClient(Client):
     与https://github.com/alist-org/alist/issues/5032要求的一致，先放这里，以后实现
     """
 
-    def __init__(self, domain, webhook_url):
-        super().__init__(domain)
+    def __init__(self, domain, username, password, webhook_url):
+        super().__init__(domain, username, password)
         self._register_webhook(webhook_url)
 
     def _register_webhook(self, webhook_url):
